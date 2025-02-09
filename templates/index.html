@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🚀 ADI AI OCR Assistant 🤖</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Background Styling */
+      body {
+        background: radial-gradient(circle, #0f172a, #000);
+        color: white;
+        font-family: "Poppins", sans-serif;
+        overflow-x: hidden;
+        text-align: center;
+        position: relative;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* Floating Title */
+      .title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        background: linear-gradient(45deg, #06b6d4, #0ea5e9);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: float 3s infinite alternate ease-in-out;
+        position: relative;
+        display: inline-block;
+      }
+
+      @keyframes float {
+        0% {
+          transform: translateY(0);
+        }
+        100% {
+          transform: translateY(10px);
+        }
+      }
+
+      /* Buttons */
+      .btn {
+        background: linear-gradient(45deg, #06b6d4, #0ea5e9);
+        padding: 12px 25px;
+        font-size: 1rem;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 10px;
+      }
+
+      .btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 15px #0ea5e9;
+      }
+
+      /* Drop Area */
+      #drop-area {
+        width: 80%;
+        max-width: 300px;
+        height: 200px;
+        border: 2px dashed #06b6d4;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        margin: 20px auto;
+        transition: 0.3s;
+      }
+
+      #drop-area:hover {
+        border-color: #0ea5e9;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      /* Image Preview */
+      #image-preview {
+        max-width: 300px;
+        margin-top: 20px;
+        display: none;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+      }
+
+      /* Camera */
+      #video-container {
+        display: none;
+        margin-top: 20px;
+      }
+
+      video {
+        width: 100%;
+        max-width: 300px;
+        height: auto;
+        border-radius: 10px;
+      }
+
+      /* Media Query for responsiveness */
+      @media (max-width: 768px) {
+        .title {
+          font-size: 2rem;
+        }
+        #drop-area {
+          width: 90%;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .title {
+          font-size: 1.5rem;
+        }
+        #drop-area {
+          width: 95%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1 class="title mt-10">🚀 ADI AI OCR Assistant 🤖</h1>
+
+    <div class="steps mt-8">
+      <h2 class="text-xl font-bold text-cyan-400">How It Works:</h2>
+      <ul class="text-lg text-gray-300 space-y-4 mt-4">
+        <li>
+          1️⃣ <strong>Upload an image 📂:</strong> Choose an image from your
+          device for OCR processing.
+        </li>
+        <li>
+          2️⃣ <strong>Capture an image 📸:</strong> Use your webcam to capture an
+          image for OCR processing.
+        </li>
+        <li>
+          3️⃣ <strong>Drag or Paste an image 🖼️:</strong> Drag and drop or paste
+          an image directly into the website.
+        </li>
+        <li>
+          4️⃣ <strong>Process the image 🚀:</strong> After uploading or capturing
+          the image, click on "Process Image" to extract the text and get AI
+          responses.
+        </li>
+      </ul>
+    </div>
+
+    <div>
+      <input type="file" id="file-input" class="hidden" />
+      <button
+        class="btn"
+        onclick="document.getElementById('file-input').click()"
+      >
+        📂 Upload Image
+      </button>
+      <button class="btn" onclick="startCamera()">📸 Capture Image</button>
+    </div>
+
+    <div id="drop-area" onclick="document.getElementById('file-input').click()">
+      Drop or Paste Image Here
+    </div>
+
+    <div id="video-container">
+      <video id="video" autoplay></video>
+      <button class="btn mt-2" onclick="captureImage()">📷 Capture</button>
+    </div>
+
+    <canvas id="canvas" style="display: none"></canvas>
+
+    <img id="image-preview" />
+
+    <button class="btn mt-4" onclick="processImage()">🚀 Process Image</button>
+
+    <h3 class="mt-6 text-lg font-bold text-cyan-400">Extracted Text:</h3>
+    <p id="extracted-text" class="text-gray-300"></p>
+
+    <h3 class="mt-6 text-lg font-bold text-cyan-400">AI Response:</h3>
+    <p id="ai-response" class="text-gray-300"></p>
+
+    <script>
+      let imageBase64 = "";
+      let videoStream = null;
+
+      // Handle File Upload
+      document
+        .getElementById("file-input")
+        .addEventListener("change", function (event) {
+          const file = event.target.files[0];
+          if (file) convertImageToBase64(file);
+        });
+
+      // Drag & Drop Handling
+      let dropArea = document.getElementById("drop-area");
+      dropArea.addEventListener("dragover", function (event) {
+        event.preventDefault();
+      });
+      dropArea.addEventListener("drop", function (event) {
+        event.preventDefault();
+        const file = event.dataTransfer.files[0];
+        if (file) convertImageToBase64(file);
+      });
+
+      // Paste Image Handling
+      document.addEventListener("paste", function (event) {
+        let items = event.clipboardData.items;
+        for (let item of items) {
+          if (item.type.indexOf("image") !== -1) {
+            let blob = item.getAsFile();
+            convertImageToBase64(blob);
+          }
+        }
+      });
+
+      // Convert Image to Base64
+      function convertImageToBase64(file) {
+        let reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onloadend = function () {
+          imageBase64 = reader.result;
+          document.getElementById("image-preview").src = imageBase64;
+          document.getElementById("image-preview").style.display = "block";
+        };
+      }
+
+      // Start Camera
+      function startCamera() {
+        navigator.mediaDevices
+          .getUserMedia({ video: true })
+          .then(function (stream) {
+            videoStream = stream;
+            document.getElementById("video-container").style.display = "block";
+            document.getElementById("video").srcObject = stream;
+          })
+          .catch(function (error) {
+            alert("Camera access denied: " + error);
+          });
+      }
+
+      // Capture Image from Camera
+      function captureImage() {
+        let video = document.getElementById("video");
+        let canvas = document.getElementById("canvas");
+        let context = canvas.getContext("2d");
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        imageBase64 = canvas.toDataURL("image/png");
+        document.getElementById("image-preview").src = imageBase64;
+        document.getElementById("image-preview").style.display = "block";
+
+        videoStream.getTracks().forEach((track) => track.stop());
+        document.getElementById("video-container").style.display = "none";
+      }
+
+      // Process Image
+      function processImage() {
+        if (!imageBase64) {
+          alert("Please upload, paste, or capture an image first.");
+          return;
+        }
+
+        fetch("/process_image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: imageBase64 }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            document.getElementById("extracted-text").innerText =
+              data.extracted_text || "No text found";
+            document.getElementById("ai-response").innerText =
+              data.answer || "No response";
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+    </script>
+  </body>
+</html>
